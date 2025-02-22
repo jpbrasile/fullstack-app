@@ -105,7 +105,7 @@ function App() {
         setProspects(await apiRequest("/api/prospects"));
       }
       if (activeTab === "entreprises") {
-        const entreprisesData = await apiRequest("/api/entreprises");
+        const entreprisesData = await apiRequest("/api/myKey_entreprises_v1");
         console.log("fetchData - /api/entreprises response:", entreprisesData);
         setEntreprises(entreprisesData);
       }
