@@ -70,16 +70,26 @@ function App() {
     notes: "",
   });
   const [newTache, setNewTache] = useState({ libelle: "", status: "", date_objectif: "", notes: "", prospect_id: "" });
+  // For emails, calls, and meetings we now use prospect_name instead of prospect_id:
   const [newEmail, setNewEmail] = useState({
-    prospect_id: "",
+    prospect_name: "",
     date_email: "",
     expediteur: "",
     destinataire: "",
     sujet: "",
     corps: "",
   });
-  const [newCall, setNewCall] = useState({ prospect_id: "", date_appel: "", notes: "" });
-  const [newMeeting, setNewMeeting] = useState({ prospect_id: "", date_meeting: "", participants: "", notes: "" });
+  const [newCall, setNewCall] = useState({
+    prospect_name: "",
+    date_appel: "",
+    notes: "",
+  });
+  const [newMeeting, setNewMeeting] = useState({
+    prospect_name: "",
+    date_meeting: "",
+    participants: "",
+    notes: "",
+  });
 
   const resetNewProspect = () =>
     setNewProspect({ nom: "", prenom: "", entreprise_id: "", email: "", telephone: "", fonction: "", notes: "" });
@@ -95,9 +105,9 @@ function App() {
     });
   const resetNewTache = () => setNewTache({ libelle: "", status: "", date_objectif: "", notes: "", prospect_id: "" });
   const resetNewEmail = () =>
-    setNewEmail({ prospect_id: "", date_email: "", expediteur: "", destinataire: "", sujet: "", corps: "" });
-  const resetNewCall = () => setNewCall({ prospect_id: "", date_appel: "", notes: "" });
-  const resetNewMeeting = () => setNewMeeting({ prospect_id: "", date_meeting: "", participants: "", notes: "" });
+    setNewEmail({ prospect_name: "", date_email: "", expediteur: "", destinataire: "", sujet: "", corps: "" });
+  const resetNewCall = () => setNewCall({ prospect_name: "", date_appel: "", notes: "" });
+  const resetNewMeeting = () => setNewMeeting({ prospect_name: "", date_meeting: "", participants: "", notes: "" });
 
   const fetchData = async () => {
     try {
@@ -136,12 +146,15 @@ function App() {
     if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
       parsedValue = parseInt(value, 10);
     }
-    setter(prev => ({ ...prev, [name]: parsedValue }));
+    // For fields that now use prospect_name we just keep the string value.
+    setter((prev) => ({ ...prev, [name]: parsedValue }));
   };
 
   const filterData = (data, keys) => {
     if (!filter) return data;
-    return data.filter(item => keys.some(key => String(item[key] ?? "").toLowerCase().includes(filter.toLowerCase())));
+    return data.filter((item) =>
+      keys.some((key) => String(item[key] ?? "").toLowerCase().includes(filter.toLowerCase())),
+    );
   };
 
   const handleSubmit = (apiEndpoint, data, reset, setData, editState = null, setEditState = null) => async (e) => {
@@ -150,9 +163,14 @@ function App() {
       const method = editState ? "PUT" : "POST";
       const url = editState
         ? `${apiEndpoint}/${
-          editState.prospect_id || editState.entreprise_id || editState.tache_id || editState.email_id
-          || editState.appel_id || editState.meeting_id || editState.id
-        }`
+            editState.prospect_id ||
+            editState.entreprise_id ||
+            editState.tache_id ||
+            editState.email_id ||
+            editState.appel_id ||
+            editState.meeting_id ||
+            editState.id
+          }`
         : apiEndpoint;
 
       await apiRequest(url, method, data);
@@ -181,9 +199,12 @@ function App() {
     resetNew();
     const itemToEdit = { ...item };
     if (itemToEdit.date_objectif) itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
-    if (itemToEdit.date_email) itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
-    if (itemToEdit.date_appel) itemToEdit.date_appel = new Date(itemToEdit.date_appel).toISOString().slice(0, 16);
-    if (itemToEdit.date_meeting) itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
+    if (itemToEdit.date_email)
+      itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
+    if (itemToEdit.date_appel)
+      itemToEdit.date_appel = new Date(itemToEdit.date_appel).toISOString().slice(0, 16);
+    if (itemToEdit.date_meeting)
+      itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
     setEdit(itemToEdit);
   };
 
@@ -222,58 +243,52 @@ function App() {
               <label htmlFor={name} className="block text-sm font-medium text-gray-700">
                 {label}
               </label>
-              {readOnly
-                ? (
-                  <input
-                    id={name}
-                    type="text"
-                    name={name}
-                    value={value}
-                    readOnly
-                    className="w-full p-2 border rounded bg-gray-100"
-                  />
-                )
-                : type === "textarea"
-                ? (
-                  <textarea
-                    id={name}
-                    name={name}
-                    value={value}
-                    onChange={handleInputChange(setState, isEditing)}
-                    required={required}
-                    className="w-full p-2 border rounded"
-                  />
-                )
-                : type === "select"
-                ? (
-                  <select
-                    id={name}
-                    name={name}
-                    value={String(value)}
-                    onChange={handleInputChange(setState, isEditing)}
-                    required={required}
-                    className="w-full p-2 border rounded"
-                  >
-                    <option value="">Sélectionnez une option</option>
-                    {options.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                )
-                : (
-                  <input
-                    id={name}
-                    type={type}
-                    name={name}
-                    value={value}
-                    onChange={handleInputChange(setState, isEditing)}
-                    placeholder={label}
-                    required={required}
-                    className="w-full p-2 border rounded"
-                  />
-                )}
+              {readOnly ? (
+                <input
+                  id={name}
+                  type="text"
+                  name={name}
+                  value={value}
+                  readOnly
+                  className="w-full p-2 border rounded bg-gray-100"
+                />
+              ) : type === "textarea" ? (
+                <textarea
+                  id={name}
+                  name={name}
+                  value={value}
+                  onChange={handleInputChange(setState, isEditing)}
+                  required={required}
+                  className="w-full p-2 border rounded"
+                />
+              ) : type === "select" ? (
+                <select
+                  id={name}
+                  name={name}
+                  value={String(value)}
+                  onChange={handleInputChange(setState, isEditing)}
+                  required={required}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="">Sélectionnez une option</option>
+                  {options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  id={name}
+                  type={type}
+                  name={name}
+                  value={value}
+                  onChange={handleInputChange(setState, isEditing)}
+                  placeholder={label}
+                  required={required}
+                  className="w-full p-2 border rounded"
+                />
+              )}
             </div>
           );
         })}
@@ -296,15 +311,21 @@ function App() {
   const renderList = (items, fields, handleDelete, itemType, editHandler, editState) => (
     <ul>
       {items.map((item) => {
-        const prospect = prospects.find(p => p.prospect_id === item.prospect_id);
-        const prospectName = prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A";
-
+        // Determine the prospect label. If the item has a prospect_name already (from the UI input),
+        // use that; otherwise, look it up using the prospect_id.
+        let prospectLabel = "N/A";
+        if (item.prospect_name) {
+          prospectLabel = item.prospect_name;
+        } else if (item.prospect_id) {
+          const prospect = prospects.find((p) => p.prospect_id === item.prospect_id);
+          prospectLabel = prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A";
+        }
         return (
           <li key={item[`${itemType}_id`]} className="mb-2 p-2 bg-gray-100 rounded">
             {fields.map((field) => {
               let displayValue = item[field.name] ?? "N/A";
               if (field.name === "prospect_name") {
-                displayValue = prospectName;
+                displayValue = prospectLabel;
               }
               return (
                 <span key={field.name}>
@@ -340,7 +361,7 @@ function App() {
       name: "entreprise_id",
       label: "Entreprise",
       type: "select",
-      options: entreprises.map(e => ({ value: e.entreprise_id, label: e.nom_entreprise })),
+      options: entreprises.map((e) => ({ value: e.entreprise_id, label: e.nom_entreprise })),
     },
     { name: "email", label: "Email", type: "email" },
     { name: "telephone", label: "Téléphone", type: "tel" },
@@ -378,17 +399,24 @@ function App() {
       name: "prospect_name",
       label: "Prospect",
       type: "select",
-      options: prospects.map(p => ({ value: p.prospect_id, label: `${p.nom} ${p.prenom}` })),
+      options: prospects.map((p) => ({
+        value: `${p.nom} ${p.prenom}`,
+        label: `${p.nom} ${p.prenom}`,
+      })),
     },
   ];
 
+  // For email, call, and meeting forms we now use prospect_name in place of prospect_id.
   const emailFields = [
     { name: "email_id", label: "ID", type: "text", required: false },
     {
-      name: "prospect_id",
+      name: "prospect_name",
       label: "Prospect",
       type: "select",
-      options: prospects.map(p => ({ value: p.prospect_id, label: `${p.nom} ${p.prenom}` })),
+      options: prospects.map((p) => ({
+        value: `${p.nom} ${p.prenom}`,
+        label: `${p.nom} ${p.prenom}`,
+      })),
     },
     { name: "date_email", label: "Date Email", type: "datetime-local" },
     { name: "expediteur", label: "Expéditeur", type: "text" },
@@ -400,10 +428,13 @@ function App() {
   const callFields = [
     { name: "appel_id", label: "ID", type: "text", required: false },
     {
-      name: "prospect_id",
+      name: "prospect_name",
       label: "Prospect",
       type: "select",
-      options: prospects.map(p => ({ value: p.prospect_id, label: `${p.nom} ${p.prenom}` })),
+      options: prospects.map((p) => ({
+        value: `${p.nom} ${p.prenom}`,
+        label: `${p.nom} ${p.prenom}`,
+      })),
     },
     { name: "date_appel", label: "Date Appel", type: "datetime-local" },
     { name: "notes", label: "Notes", type: "textarea" },
@@ -412,10 +443,13 @@ function App() {
   const meetingFields = [
     { name: "meeting_id", label: "ID", type: "text", required: false },
     {
-      name: "prospect_id",
+      name: "prospect_name",
       label: "Prospect",
       type: "select",
-      options: prospects.map(p => ({ value: p.prospect_id, label: `${p.nom} ${p.prenom}` })),
+      options: prospects.map((p) => ({
+        value: `${p.nom} ${p.prenom}`,
+        label: `${p.nom} ${p.prenom}`,
+      })),
     },
     { name: "date_meeting", label: "Date Meeting", type: "datetime-local" },
     { name: "participants", label: "Participants", type: "text" },
