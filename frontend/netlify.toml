@@ -1,5 +1,5 @@
 [build]
-  publish = "public"   # or whichever directory holds your built assets
+  publish = "dist"   # or whichever directory holds your built assets
   command = "npm run build"
 
 [functions]
