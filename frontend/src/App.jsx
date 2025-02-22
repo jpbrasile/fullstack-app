@@ -50,7 +50,8 @@ function App() {
   const [editCall, setEditCall] = useState(null);
   const [editMeeting, setEditMeeting] = useState(null);
 
-  // --- State for new items, using a consistent naming convention ---
+  // --- State for new items, using a consistent naming convention ---  
+  // For prospects we keep nom and prenom; for related records, use prospect_id.
   const [newProspect, setNewProspect] = useState({
     nom: "",
     prenom: "",
@@ -69,10 +70,15 @@ function App() {
     strategie_entreprise: "",
     notes: "",
   });
-  const [newTache, setNewTache] = useState({ libelle: "", status: "", date_objectif: "", notes: "", prospect_id: "" });
-  // For emails, calls, and meetings we now use prospect_name instead of prospect_id:
+  const [newTache, setNewTache] = useState({
+    libelle: "",
+    status: "",
+    date_objectif: "",
+    notes: "",
+    prospect_id: "",
+  });
   const [newEmail, setNewEmail] = useState({
-    prospect_name: "",
+    prospect_id: "",
     date_email: "",
     expediteur: "",
     destinataire: "",
@@ -80,19 +86,27 @@ function App() {
     corps: "",
   });
   const [newCall, setNewCall] = useState({
-    prospect_name: "",
+    prospect_id: "",
     date_appel: "",
     notes: "",
   });
   const [newMeeting, setNewMeeting] = useState({
-    prospect_name: "",
+    prospect_id: "",
     date_meeting: "",
     participants: "",
     notes: "",
   });
 
   const resetNewProspect = () =>
-    setNewProspect({ nom: "", prenom: "", entreprise_id: "", email: "", telephone: "", fonction: "", notes: "" });
+    setNewProspect({
+      nom: "",
+      prenom: "",
+      entreprise_id: "",
+      email: "",
+      telephone: "",
+      fonction: "",
+      notes: "",
+    });
   const resetNewEntreprise = () =>
     setNewEntreprise({
       nom_entreprise: "",
@@ -103,11 +117,36 @@ function App() {
       strategie_entreprise: "",
       notes: "",
     });
-  const resetNewTache = () => setNewTache({ libelle: "", status: "", date_objectif: "", notes: "", prospect_id: "" });
+  const resetNewTache = () =>
+    setNewTache({
+      libelle: "",
+      status: "",
+      date_objectif: "",
+      notes: "",
+      prospect_id: "",
+    });
   const resetNewEmail = () =>
-    setNewEmail({ prospect_name: "", date_email: "", expediteur: "", destinataire: "", sujet: "", corps: "" });
-  const resetNewCall = () => setNewCall({ prospect_name: "", date_appel: "", notes: "" });
-  const resetNewMeeting = () => setNewMeeting({ prospect_name: "", date_meeting: "", participants: "", notes: "" });
+    setNewEmail({
+      prospect_id: "",
+      date_email: "",
+      expediteur: "",
+      destinataire: "",
+      sujet: "",
+      corps: "",
+    });
+  const resetNewCall = () =>
+    setNewCall({
+      prospect_id: "",
+      date_appel: "",
+      notes: "",
+    });
+  const resetNewMeeting = () =>
+    setNewMeeting({
+      prospect_id: "",
+      date_meeting: "",
+      participants: "",
+      notes: "",
+    });
 
   const fetchData = async () => {
     try {
@@ -146,14 +185,13 @@ function App() {
     if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
       parsedValue = parseInt(value, 10);
     }
-    // For fields that now use prospect_name we just keep the string value.
     setter((prev) => ({ ...prev, [name]: parsedValue }));
   };
 
   const filterData = (data, keys) => {
     if (!filter) return data;
     return data.filter((item) =>
-      keys.some((key) => String(item[key] ?? "").toLowerCase().includes(filter.toLowerCase())),
+      keys.some((key) => String(item[key] ?? "").toLowerCase().includes(filter.toLowerCase()))
     );
   };
 
@@ -198,7 +236,8 @@ function App() {
   const handleEdit = (item, setEdit, resetNew) => {
     resetNew();
     const itemToEdit = { ...item };
-    if (itemToEdit.date_objectif) itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
+    if (itemToEdit.date_objectif)
+      itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
     if (itemToEdit.date_email)
       itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
     if (itemToEdit.date_appel)
@@ -211,28 +250,27 @@ function App() {
   const filteredProspects = filterData(prospects, ["nom", "prenom", "email"]);
   const filteredEntreprises = filterData(entreprises, ["nom_entreprise", "secteur_activite", "adresse"]);
 
+  // When rendering tasks, we want to join the prospect info.
   const extendedTaches = taches.map((tache) => {
     const prospect = prospects.find((p) => p.prospect_id === tache.prospect_id);
     return {
       ...tache,
-      prospect_name: prospect ? `${prospect.nom} ${prospect.prenom}` : "",
+      prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "",
     };
   });
-
   let filteredTaches = extendedTaches;
   if (filterDate) {
     filteredTaches = filteredTaches.filter(
-      (tache) => tache.date_objectif && tache.date_objectif >= filterDate,
+      (tache) => tache.date_objectif && tache.date_objectif >= filterDate
     );
   }
-  filteredTaches = filterData(filteredTaches, ["libelle", "status", "notes", "prospect_name"]);
+  filteredTaches = filterData(filteredTaches, ["libelle", "status", "notes", "prospectFullName"]);
   const filteredEmails = filterData(emailHistory, ["sujet", "expediteur", "destinataire", "corps"]);
   const filteredCalls = filterData(callHistory, ["notes"]);
   const filteredMeetings = filterData(meetings, ["notes", "participants"]);
 
   const renderForm = (state, setState, handleSubmit, fields, editState = null) => {
     const isEditing = !!editState;
-
     return (
       <form onSubmit={handleSubmit} className="mb-4">
         {fields.map((field) => {
@@ -311,12 +349,10 @@ function App() {
   const renderList = (items, fields, handleDelete, itemType, editHandler, editState) => (
     <ul>
       {items.map((item) => {
-        // Determine the prospect label. If the item has a prospect_name already (from the UI input),
-        // use that; otherwise, look it up using the prospect_id.
-        let prospectLabel = "N/A";
-        if (item.prospect_name) {
-          prospectLabel = item.prospect_name;
-        } else if (item.prospect_id) {
+        // For non-prospect records (like calls, emails, taches, meetings),
+        // look up the prospect full name using the prospect_id.
+        let prospectLabel = "";
+        if (itemType !== "prospect" && item.prospect_id) {
           const prospect = prospects.find((p) => p.prospect_id === item.prospect_id);
           prospectLabel = prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A";
         }
@@ -324,7 +360,7 @@ function App() {
           <li key={item[`${itemType}_id`]} className="mb-2 p-2 bg-gray-100 rounded">
             {fields.map((field) => {
               let displayValue = item[field.name] ?? "N/A";
-              if (field.name === "prospect_name") {
+              if (field.name === "prospect_id" && itemType !== "prospect") {
                 displayValue = prospectLabel;
               }
               return (
@@ -361,7 +397,10 @@ function App() {
       name: "entreprise_id",
       label: "Entreprise",
       type: "select",
-      options: entreprises.map((e) => ({ value: e.entreprise_id, label: e.nom_entreprise })),
+      options: entreprises.map((e) => ({
+        value: e.entreprise_id,
+        label: e.nom_entreprise,
+      })),
     },
     { name: "email", label: "Email", type: "email" },
     { name: "telephone", label: "Téléphone", type: "tel" },
@@ -380,6 +419,7 @@ function App() {
     { name: "notes", label: "Notes", type: "textarea" },
   ];
 
+  // For tasks, emails, calls, and meetings, use prospect_id
   const tacheFields = [
     { name: "tache_id", label: "ID", type: "text", required: false },
     { name: "libelle", label: "Libellé", type: "text" },
@@ -396,25 +436,24 @@ function App() {
     { name: "date_objectif", label: "Date Objectif", type: "date" },
     { name: "notes", label: "Notes", type: "textarea" },
     {
-      name: "prospect_name",
+      name: "prospect_id",
       label: "Prospect",
       type: "select",
       options: prospects.map((p) => ({
-        value: `${p.nom} ${p.prenom}`,
+        value: p.prospect_id,
         label: `${p.nom} ${p.prenom}`,
       })),
     },
   ];
 
-  // For email, call, and meeting forms we now use prospect_name in place of prospect_id.
   const emailFields = [
     { name: "email_id", label: "ID", type: "text", required: false },
     {
-      name: "prospect_name",
+      name: "prospect_id",
       label: "Prospect",
       type: "select",
       options: prospects.map((p) => ({
-        value: `${p.nom} ${p.prenom}`,
+        value: p.prospect_id,
         label: `${p.nom} ${p.prenom}`,
       })),
     },
@@ -428,11 +467,11 @@ function App() {
   const callFields = [
     { name: "appel_id", label: "ID", type: "text", required: false },
     {
-      name: "prospect_name",
+      name: "prospect_id",
       label: "Prospect",
       type: "select",
       options: prospects.map((p) => ({
-        value: `${p.nom} ${p.prenom}`,
+        value: p.prospect_id,
         label: `${p.nom} ${p.prenom}`,
       })),
     },
@@ -443,11 +482,11 @@ function App() {
   const meetingFields = [
     { name: "meeting_id", label: "ID", type: "text", required: false },
     {
-      name: "prospect_name",
+      name: "prospect_id",
       label: "Prospect",
       type: "select",
       options: prospects.map((p) => ({
-        value: `${p.nom} ${p.prenom}`,
+        value: p.prospect_id,
         label: `${p.nom} ${p.prenom}`,
       })),
     },
@@ -461,37 +500,49 @@ function App() {
       <h1 className="text-3xl font-bold mb-4">Gestion de Prospects et Entreprises</h1>
       <div className="mb-4">
         <button
-          className={`px-4 py-2 mr-2 ${activeTab === "prospects" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 mr-2 ${
+            activeTab === "prospects" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("prospects")}
         >
           Prospects
         </button>
         <button
-          className={`px-4 py-2 mr-2 ${activeTab === "entreprises" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 mr-2 ${
+            activeTab === "entreprises" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("entreprises")}
         >
           Entreprises
         </button>
         <button
-          className={`px-4 py-2 mr-2 ${activeTab === "taches" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 mr-2 ${
+            activeTab === "taches" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("taches")}
         >
           Tâches
         </button>
         <button
-          className={`px-4 py-2 mr-2 ${activeTab === "historique_emails" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 mr-2 ${
+            activeTab === "historique_emails" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("historique_emails")}
         >
           Historique Emails
         </button>
         <button
-          className={`px-4 py-2 mr-2 ${activeTab === "historique_appels" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 mr-2 ${
+            activeTab === "historique_appels" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("historique_appels")}
         >
           Historique Appels
         </button>
         <button
-          className={`px-4 py-2 ${activeTab === "historique_meetings" ? "bg-blue-500 text-white" : "bg-gray-200"}`}
+          className={`px-4 py-2 ${
+            activeTab === "historique_meetings" ? "bg-blue-500 text-white" : "bg-gray-200"
+          }`}
           onClick={() => setActiveTab("historique_meetings")}
         >
           Historique Meetings
@@ -529,10 +580,10 @@ function App() {
               resetNewProspect,
               setProspects,
               editProspect,
-              setEditProspect,
+              setEditProspect
             ),
             prospectFields,
-            editProspect,
+            editProspect
           )}
           {renderList(
             filteredProspects,
@@ -540,7 +591,7 @@ function App() {
             handleDelete,
             "prospect",
             (item) => handleEdit(item, setEditProspect, resetNewProspect),
-            editProspect,
+            editProspect
           )}
         </div>
       )}
@@ -555,10 +606,10 @@ function App() {
               resetNewEntreprise,
               setEntreprises,
               editEntreprise,
-              setEditEntreprise,
+              setEditEntreprise
             ),
             entrepriseFields,
-            editEntreprise,
+            editEntreprise
           )}
           {renderList(
             filteredEntreprises,
@@ -566,7 +617,7 @@ function App() {
             handleDelete,
             "entreprise",
             (item) => handleEdit(item, setEditEntreprise, resetNewEntreprise),
-            editEntreprise,
+            editEntreprise
           )}
         </div>
       )}
@@ -581,10 +632,10 @@ function App() {
               resetNewTache,
               setTaches,
               editTache,
-              setEditTache,
+              setEditTache
             ),
             tacheFields,
-            editTache,
+            editTache
           )}
           {renderList(
             filteredTaches,
@@ -592,7 +643,7 @@ function App() {
             handleDelete,
             "tache",
             (item) => handleEdit(item, setEditTache, resetNewTache),
-            editTache,
+            editTache
           )}
         </div>
       )}
@@ -607,10 +658,10 @@ function App() {
               resetNewEmail,
               setEmailHistory,
               editEmail,
-              setEditEmail,
+              setEditEmail
             ),
             emailFields,
-            editEmail,
+            editEmail
           )}
           {renderList(
             filteredEmails,
@@ -618,7 +669,7 @@ function App() {
             handleDelete,
             "email",
             (item) => handleEdit(item, setEditEmail, resetNewEmail),
-            editEmail,
+            editEmail
           )}
         </div>
       )}
@@ -633,10 +684,10 @@ function App() {
               resetNewCall,
               setCallHistory,
               editCall,
-              setEditCall,
+              setEditCall
             ),
             callFields,
-            editCall,
+            editCall
           )}
           {renderList(
             filteredCalls,
@@ -644,7 +695,7 @@ function App() {
             handleDelete,
             "appel",
             (item) => handleEdit(item, setEditCall, resetNewCall),
-            editCall,
+            editCall
           )}
         </div>
       )}
@@ -659,10 +710,10 @@ function App() {
               resetNewMeeting,
               setMeetings,
               editMeeting,
-              setEditMeeting,
+              setEditMeeting
             ),
             meetingFields,
-            editMeeting,
+            editMeeting
           )}
           {renderList(
             filteredMeetings,
@@ -670,7 +721,7 @@ function App() {
             handleDelete,
             "meeting",
             (item) => handleEdit(item, setEditMeeting, resetNewMeeting),
-            editMeeting,
+            editMeeting
           )}
         </div>
       )}
