@@ -195,7 +195,34 @@ function App() {
     );
   };
 
-  const handleSubmit = (apiEndpoint, data, reset, setData, editState = null, setEditState = null) => async (e) => {
+  // const handleSubmit = (apiEndpoint, data, reset, setData, editState = null, setEditState = null) => async (e) => {
+  //   e.preventDefault();
+  //   try {
+  //     const method = editState ? "PUT" : "POST";
+  //     const url = editState
+  //       ? `${apiEndpoint}/${
+  //           editState.prospect_id ||
+  //           editState.entreprise_id ||
+  //           editState.tache_id ||
+  //           editState.email_id ||
+  //           editState.appel_id ||
+  //           editState.meeting_id ||
+  //           editState.id
+  //         }`
+  //       : apiEndpoint;
+
+  //     await apiRequest(url, method, data);
+  //     await fetchData();
+  //     reset();
+  //     if (setEditState) {
+  //       setEditState(null);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error submitting data:", error);
+  //     alert(`Error submitting data: ${error.message}`);
+  //   }
+  // };
+  const handleSubmit = (apiEndpoint, newItemState, reset, setData, editState = null, setEditState = null) => async (e) => {
     e.preventDefault();
     try {
       const method = editState ? "PUT" : "POST";
@@ -210,8 +237,12 @@ function App() {
             editState.id
           }`
         : apiEndpoint;
-
-      await apiRequest(url, method, data);
+      
+      // Use the appropriate state based on whether we're editing or creating
+      //const dataToSubmit = editState || newItemState;
+      const dataToSubmit = isEditing ? editState : newItemState;
+      
+      await apiRequest(url, method, dataToSubmit);
       await fetchData();
       reset();
       if (setEditState) {
@@ -222,7 +253,6 @@ function App() {
       alert(`Error submitting data: ${error.message}`);
     }
   };
-
   const handleDelete = (apiEndpoint, id) => async () => {
     try {
       await apiRequest(`${apiEndpoint}/${id}`, "DELETE");
@@ -575,8 +605,16 @@ function App() {
             newProspect,
             setNewProspect,
             handleSubmit(
+            //   "/api/prospects",
+            //   editProspect || newProspect,
+            //   resetNewProspect,
+            //   setProspects,
+            //   editProspect,
+            //   setEditProspect
+            // ),
+            handleSubmit(
               "/api/prospects",
-              editProspect || newProspect,
+              newProspect,
               resetNewProspect,
               setProspects,
               editProspect,
@@ -628,7 +666,8 @@ function App() {
             setNewTache,
             handleSubmit(
               "/api/taches",
-              editTache || newTache,
+              //editTache || newTache,
+              newTache,
               resetNewTache,
               setTaches,
               editTache,
@@ -654,7 +693,8 @@ function App() {
             setNewEmail,
             handleSubmit(
               "/api/email_history",
-              editEmail || newEmail,
+              //editEmail || newEmail,
+              newEmail,
               resetNewEmail,
               setEmailHistory,
               editEmail,
@@ -680,7 +720,8 @@ function App() {
             setNewCall,
             handleSubmit(
               "/api/call_history",
-              editCall || newCall,
+              //editCall || newCall,
+              newCall,
               resetNewCall,
               setCallHistory,
               editCall,
@@ -706,7 +747,8 @@ function App() {
             setNewMeeting,
             handleSubmit(
               "/api/meetings",
-              editMeeting || newMeeting,
+              //editMeeting || newMeeting,
+              newMeeting,
               resetNewMeeting,
               setMeetings,
               editMeeting,
