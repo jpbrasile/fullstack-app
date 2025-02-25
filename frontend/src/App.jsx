@@ -604,7 +604,7 @@ function App() {
           {renderForm(
             newProspect,
             setNewProspect,
-            handleSubmit(
+            //handleSubmit(
             //   "/api/prospects",
             //   editProspect || newProspect,
             //   resetNewProspect,
