@@ -1,7 +1,35 @@
 /** @jsxImportSource https://esm.sh/react@18.2.0 */
 import React, { useEffect, useState } from "https://esm.sh/react@18.2.0";
-import apiRequest from './api.js'; // Import the apiRequest function
-import { renderForm, renderList } from './utils.js'; // Import render functions
+
+// Utility function for consistent API requests
+async function apiRequest(url, method = "GET", data = null) {
+  const options = {
+    method,
+    headers: { "Content-Type": "application/json" },
+  };
+  if (data) {
+    options.body = JSON.stringify(data);
+  }
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    let errorBody = "";
+    let errorMessage = `API request to ${url} failed: ${response.status} ${response.statusText}`;
+    try {
+      errorBody = await response.json();
+      if (errorBody && errorBody.message) {
+        errorMessage += ` - ${errorBody.message}`;
+      } else {
+        errorBody = await response.text();
+        errorMessage += ` - ${errorBody}`;
+      }
+    } catch (e) {
+      errorBody = "Unable to read response body";
+      errorMessage += ` - ${errorBody}`;
+    }
+    throw new Error(errorMessage);
+  }
+  return response.json();
+}
 
 function App() {
   const [activeTab, setActiveTab] = useState("prospects");
@@ -22,7 +50,7 @@ function App() {
   const [editCall, setEditCall] = useState(null);
   const [editMeeting, setEditMeeting] = useState(null);
 
-  // --- State for new items, using a consistent naming convention ---
+  // --- State for new items, using a consistent naming convention ---  
   // For prospects we keep nom and prenom; for related records, use prospect_id.
   const [newProspect, setNewProspect] = useState({
     nom: "",
@@ -122,16 +150,16 @@ function App() {
 
   const fetchData = async () => {
     try {
-      if (activeTab === "prospects" || activeTab === "taches" ||
-          activeTab === "historique_emails" || activeTab === "historique_appels" ||
+      if (activeTab === "prospects" || activeTab === "taches" || 
+          activeTab === "historique_emails" || activeTab === "historique_appels" || 
           activeTab === "historique_meetings") {
         setProspects(await apiRequest("/api/prospects"));
       }
-
+      
       // Always fetch enterprises for dropdown menus
       const entreprisesData = await apiRequest("/api/entreprises");
       setEntreprises(entreprisesData);
-
+      
       if (activeTab === "taches") {
         setTaches(await apiRequest("/api/taches"));
       }
@@ -162,6 +190,16 @@ function App() {
     setter(prev => ({ ...prev, [name]: parsedValue }));
   };
 
+  // Specific input change handler for edit mode
+  const handleEditInputChange = (e, editSetter, editState) => {
+    const { name, value } = e.target;
+    let parsedValue = value;
+    if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
+      parsedValue = parseInt(value, 10);
+    }
+    editSetter({ ...editState, [name]: parsedValue });
+  };
+
 
   const filterData = (data, keys) => {
     if (!filter) return data;
@@ -185,18 +223,10 @@ function App() {
             editState.id
           }`
         : apiEndpoint;
-
+  
       // When editing, use the current edited state, not the original
-      let dataToSubmit = editState ? editState : newItemState;
-
-      // **SOLUTION: For PUT requests (edit mode), specifically for prospects,
-      // remove the 'entrepriseName' property before submitting.**
-      if (method === "PUT" && activeTab === "prospects") {
-        if (dataToSubmit.hasOwnProperty('entrepriseName')) {
-          delete dataToSubmit.entrepriseName;
-        }
-      }
-
+      const dataToSubmit = editState ? editState : newItemState;
+  
       await apiRequest(url, method, dataToSubmit);
       await fetchData();
       reset();
@@ -208,6 +238,7 @@ function App() {
       alert(`Error submitting data: ${error.message}`);
     }
   };
+
   const handleDelete = (apiEndpoint, id) => async () => {
     try {
       await apiRequest(`${apiEndpoint}/${id}`, "DELETE");
@@ -255,7 +286,7 @@ function App() {
       prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "",
     };
   });
-
+  
   let filteredTaches = extendedTaches;
   if (filterDate) {
     filteredTaches = filteredTaches.filter(
@@ -263,7 +294,7 @@ function App() {
     );
   }
   filteredTaches = filterData(filteredTaches, ["libelle", "status", "notes", "prospectFullName"]);
-
+  
   // Add prospect names to other lists
   const extendedEmails = emailHistory.map(email => {
     const prospect = prospects.find(p => p.prospect_id === email.prospect_id);
@@ -272,7 +303,7 @@ function App() {
       prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A"
     };
   });
-
+  
   const extendedCalls = callHistory.map(call => {
     const prospect = prospects.find(p => p.prospect_id === call.prospect_id);
     return {
@@ -280,7 +311,7 @@ function App() {
       prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A"
     };
   });
-
+  
   const extendedMeetings = meetings.map(meeting => {
     const prospect = prospects.find(p => p.prospect_id === meeting.prospect_id);
     return {
@@ -288,11 +319,156 @@ function App() {
       prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A"
     };
   });
-
+  
   const filteredEmails = filterData(extendedEmails, ["sujet", "expediteur", "destinataire", "corps", "prospectFullName"]);
   const filteredCalls = filterData(extendedCalls, ["notes", "prospectFullName"]);
   const filteredMeetings = filterData(extendedMeetings, ["notes", "participants", "prospectFullName"]);
 
+// Replace the entire renderForm function with this:
+
+const renderForm = (state, setState, handleSubmitFn, fields, editState = null) => {
+  const isEditing = !!editState;
+  
+  // Create a simple input change handler that works for both modes
+const onChangeHandler = (e) => {
+    const { name, value } = e.target;
+    let parsedValue = value;
+    if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
+      parsedValue = parseInt(value, 10);
+    }
+
+    // When editing, update editState directly using functional setState
+    // to ensure a new object is created based on the previous state.
+    if (isEditing) {
+      setState(prevState => {
+        return { ...prevState, [name]: parsedValue };
+      });
+    } else {
+      setState(prev => ({ ...prev, [name]: parsedValue }));
+    }
+  };
+  
+  return (
+    <form onSubmit={handleSubmitFn} className="mb-4">
+      {fields.map((field) => {
+        const { name, label, type, options, required = true, readOnly = false } = field;
+        
+        // Get the appropriate value based on mode
+        const value = isEditing ? (editState[name] ?? "") : (state[name] ?? "");
+        
+        return (
+          <div key={name} className="mb-2">
+            <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+              {label}
+            </label>
+            {readOnly ? (
+              <input
+                id={name}
+                type="text"
+                name={name}
+                value={value}
+                readOnly
+                className="w-full p-2 border rounded bg-gray-100"
+              />
+            ) : type === "textarea" ? (
+              <textarea
+                id={name}
+                name={name}
+                value={value}
+                onChange={onChangeHandler}
+                required={required}
+                className="w-full p-2 border rounded"
+              />
+            ) : type === "select" ? (
+              <select
+                id={name}
+                name={name}
+                value={String(value)}
+                onChange={onChangeHandler}
+                required={required}
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Sélectionnez une option</option>
+                {options && options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id={name}
+                type={type}
+                name={name}
+                value={value}
+                onChange={onChangeHandler}
+                placeholder={label}
+                required={required}
+                className="w-full p-2 border rounded"
+              />
+            )}
+          </div>
+        );
+      })}
+      <button type="submit" className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+        {isEditing ? "Mettre à jour" : "Ajouter"}
+      </button>
+      {isEditing && (
+        <button
+          type="button"
+          onClick={() => setState(null)}
+          className="w-full mt-2 p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+        >
+          Annuler
+        </button>
+      )}
+    </form>
+  );
+};
+
+  const renderList = (items, fields, handleDelete, itemType, editHandler, editState) => (
+    <ul>
+      {items.map((item) => {
+        return (
+          <li key={item[`${itemType}_id`] || item.id} className="mb-2 p-2 bg-gray-100 rounded">
+            {fields.map((field) => {
+              let displayValue = item[field.name] ?? "N/A";
+              
+              // Display enterprise name instead of ID
+              if (field.name === "entreprise_id" && itemType === "prospect") {
+                displayValue = item.entrepriseName || "N/A";
+              }
+              
+              // Display prospect name instead of ID
+              if (field.name === "prospect_id" && itemType !== "prospect") {
+                displayValue = item.prospectFullName || "N/A";
+              }
+              
+              return (
+                <span key={field.name}>
+                  {field.label}: {displayValue} <br />
+                </span>
+              );
+            })}
+            <div className="inline-flex space-x-2">
+              <button
+                onClick={() => editHandler(item)}
+                className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              >
+                Modifier
+              </button>
+              <button
+                onClick={handleDelete(`/api/${itemType}s`, item[`${itemType}_id`] || item.id)}
+                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+              >
+                Supprimer
+              </button>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
 
   const prospectFields = [
     { name: "prospect_id", label: "ID", type: "text", required: false, readOnly: true },
@@ -349,7 +525,7 @@ function App() {
         label: `${p.nom} ${p.prenom}`,
       })),
     },
-    ];
+  ];
 
   const emailFields = [
     { name: "email_id", label: "ID", type: "text", required: false, readOnly: true },
@@ -367,7 +543,7 @@ function App() {
     { name: "destinataire", label: "Destinataire", type: "text" },
     { name: "sujet", label: "Sujet", type: "text" },
     { name: "corps", label: "Corps", type: "textarea" },
-    ];
+  ];
 
   const callFields = [
     { name: "appel_id", label: "ID", type: "text", required: false, readOnly: true },
@@ -382,7 +558,7 @@ function App() {
     },
     { name: "date_appel", label: "Date Appel", type: "datetime-local" },
     { name: "notes", label: "Notes", type: "textarea" },
-    ];
+  ];
 
   const meetingFields = [
     { name: "meeting_id", label: "ID", type: "text", required: false, readOnly: true },
@@ -398,8 +574,7 @@ function App() {
     { name: "date_meeting", label: "Date Meeting", type: "datetime-local" },
     { name: "participants", label: "Participants", type: "text" },
     { name: "notes", label: "Notes", type: "textarea" },
-    ];
-
+  ];
 
   return (
     <div className="container mx-auto p-4">
@@ -477,10 +652,10 @@ function App() {
 
       {activeTab === "prospects" && (
         <div>
-          {renderForm({
-            state: newProspect,
-            setState: setNewProspect,
-            handleSubmitFn: handleSubmit(
+          {renderForm(
+            newProspect,
+            setNewProspect,
+            handleSubmit(
               "/api/prospects",
               newProspect,
               resetNewProspect,
@@ -488,25 +663,25 @@ function App() {
               editProspect,
               setEditProspect
             ),
-            fields: prospectFields,
-            editState: editProspect
-          })}
-          {renderList({
-            items: extendedProspects,
-            fields: prospectFields,
-            handleDelete: handleDelete,
-            itemType: "prospect",
-            editHandler: (item) => handleEdit(item, setEditProspect, resetNewProspect),
-            editState: editProspect
-          })}
+            prospectFields,
+            editProspect
+          )}
+          {renderList(
+            extendedProspects,
+            prospectFields,
+            handleDelete,
+            "prospect",
+            (item) => handleEdit(item, setEditProspect, resetNewProspect),
+            editProspect
+          )}
         </div>
       )}
       {activeTab === "entreprises" && (
         <div>
-          {renderForm({
-            state: newEntreprise,
-            setState: setNewEntreprise,
-            handleSubmitFn: handleSubmit(
+          {renderForm(
+            newEntreprise,
+            setNewEntreprise,
+            handleSubmit(
               "/api/entreprises",
               newEntreprise,
               resetNewEntreprise,
@@ -514,25 +689,25 @@ function App() {
               editEntreprise,
               setEditEntreprise
             ),
-            fields: entrepriseFields,
-            editState: editEntreprise
-          })}
-          {renderList({
-            items: filteredEntreprises,
-            fields: entrepriseFields,
-            handleDelete: handleDelete,
-            itemType: "entreprise",
-            editHandler: (item) => handleEdit(item, setEditEntreprise, resetNewEntreprise),
-            editState: editEntreprise
-          })}
+            entrepriseFields,
+            editEntreprise
+          )}
+          {renderList(
+            filteredEntreprises,
+            entrepriseFields,
+            handleDelete,
+            "entreprise",
+            (item) => handleEdit(item, setEditEntreprise, resetNewEntreprise),
+            editEntreprise
+          )}
         </div>
       )}
       {activeTab === "taches" && (
         <div>
-          {renderForm({
-            state: newTache,
-            setState: setNewTache,
-            handleSubmitFn: handleSubmit(
+          {renderForm(
+            newTache,
+            setNewTache,
+            handleSubmit(
               "/api/taches",
               newTache,
               resetNewTache,
@@ -540,25 +715,25 @@ function App() {
               editTache,
               setEditTache
             ),
-            fields: tacheFields,
-            editState: editTache
-          })}
-          {renderList({
-            items: filteredTaches,
-            fields: tacheFields,
-            handleDelete: handleDelete,
-            itemType: "tache",
-            editHandler: (item) => handleEdit(item, setEditTache, resetNewTache),
-            editState: editTache
-          })}
+            tacheFields,
+            editTache
+          )}
+          {renderList(
+            filteredTaches,
+            tacheFields,
+            handleDelete,
+            "tache",
+            (item) => handleEdit(item, setEditTache, resetNewTache),
+            editTache
+          )}
         </div>
       )}
       {activeTab === "historique_emails" && (
         <div>
-          {renderForm({
-            state: newEmail,
-            setState: setNewEmail,
-            handleSubmitFn: handleSubmit(
+          {renderForm(
+            newEmail,
+            setNewEmail,
+            handleSubmit(
               "/api/email_history",
               newEmail,
               resetNewEmail,
@@ -566,25 +741,25 @@ function App() {
               editEmail,
               setEditEmail
             ),
-            fields: emailFields,
-            editState: editEmail
-          })}
-          {renderList({
-            items: filteredEmails,
-            fields: emailFields,
-            handleDelete: handleDelete,
-            itemType: "email",
-            editHandler: (item) => handleEdit(item, setEditEmail, resetNewEmail),
-            editState: editEmail
-          })}
+            emailFields,
+            editEmail
+          )}
+          {renderList(
+            filteredEmails,
+            emailFields,
+            handleDelete,
+            "email",
+            (item) => handleEdit(item, setEditEmail, resetNewEmail),
+            editEmail
+          )}
         </div>
       )}
       {activeTab === "historique_appels" && (
         <div>
-          {renderForm({
-            state: newCall,
-            setState: setNewCall,
-            handleSubmitFn: handleSubmit(
+          {renderForm(
+            newCall,
+            setNewCall,
+            handleSubmit(
               "/api/call_history",
               newCall,
               resetNewCall,
@@ -592,25 +767,25 @@ function App() {
               editCall,
               setEditCall
             ),
-            fields: callFields,
-            editState: editCall
-          })}
-          {renderList({
-            items: filteredCalls,
-            fields: callFields,
-            handleDelete: handleDelete,
-            itemType: "appel",
-            editHandler: (item) => handleEdit(item, setEditCall, resetNewCall),
-            editState: editCall
-          })}
+            callFields,
+            editCall
+          )}
+          {renderList(
+            filteredCalls,
+            callFields,
+            handleDelete,
+            "appel",
+            (item) => handleEdit(item, setEditCall, resetNewCall),
+            editCall
+          )}
         </div>
       )}
       {activeTab === "historique_meetings" && (
         <div>
-          {renderForm({
-            state: newMeeting,
-            setState: setNewMeeting,
-            handleSubmitFn: handleSubmit(
+          {renderForm(
+            newMeeting,
+            setNewMeeting,
+            handleSubmit(
               "/api/meetings",
               newMeeting,
               resetNewMeeting,
@@ -618,17 +793,17 @@ function App() {
               editMeeting,
               setEditMeeting
             ),
-            fields: meetingFields,
-            editState: editMeeting
-          })}
-          {renderList({
-            items: filteredMeetings,
-            fields: meetingFields,
-            handleDelete: handleDelete,
-            itemType: "meeting",
-            editHandler: (item) => handleEdit(item, setEditMeeting, resetNewMeeting),
-            editState: editMeeting
-          })}
+            meetingFields,
+            editMeeting
+          )}
+          {renderList(
+            filteredMeetings,
+            meetingFields,
+            handleDelete,
+            "meeting",
+            (item) => handleEdit(item, setEditMeeting, resetNewMeeting),
+            editMeeting
+          )}
         </div>
       )}
     </div>
