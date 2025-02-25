@@ -1,6 +1,9 @@
 /** @jsxImportSource https://esm.sh/react@18.2.0 */
 import React, { useEffect, useState } from "https://esm.sh/react@18.2.0";
-
+const getEntrepriseName = (id) => {
+  const entreprise = entreprises.find(e => e.entreprise_id === id);
+  return entreprise ? entreprise.nom_entreprise : "N/A";
+};
 // Utility function for consistent API requests
 async function apiRequest(url, method = "GET", data = null) {
   const options = {
