@@ -249,23 +249,23 @@ function App() {
     }
   };
 
-  const handleEdit = (itemFromExtendedList, setEdit, resetNew) => {
+  const handleEdit = (itemFromExtendedList, setEdit, resetNew, itemType) => { // Added itemType
     resetNew();
-    // Find the original prospect from the 'prospects' array based on prospect_id
-    const originalProspect = prospects.find(p => p.prospect_id === itemFromExtendedList.prospect_id);
-    if (!originalProspect) {
-        console.error("Original prospect not found for editing!");
-        return; // Handle error if original prospect not found
+    const itemToEdit = { ...itemFromExtendedList }; // Directly use itemFromExtendedList
+
+    // Date formatting - now conditional and based on itemType
+    if (itemType === 'tache' && itemToEdit.date_objectif) {
+      itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
     }
-    const itemToEdit = { ...originalProspect }; // Copy from the *original* prospect data
-    if (itemToEdit.date_objectif)
-        itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
-    if (itemToEdit.date_email)
-        itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
-    if (itemToEdit.date_appel)
-        itemToEdit.date_appel = new Date(itemToEdit.date_appel).toISOString().slice(0, 16);
-    if (itemToEdit.date_meeting)
-        itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
+    if (itemType === 'email' && itemToEdit.date_email) {
+      itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
+    }
+    if (itemType === 'appel' && itemToEdit.date_appel) {
+      itemToEdit.date_appel = new Date(itemToEdit.date_appel).toISOString().slice(0, 16);
+    }
+    if (itemType === 'meeting' && itemToEdit.date_meeting) {
+      itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
+    }
     setEdit(itemToEdit);
   };
 
@@ -468,7 +468,7 @@ const onChangeHandler = (e) => {
             })}
             <div className="inline-flex space-x-2">
               <button
-                onClick={() => editHandler(item)}
+                onClick={() => editHandler(item, setEdit, resetNew, itemType)} // Passing itemType here
                 className="px-2 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
               >
                 Modifier
@@ -678,7 +678,7 @@ const onChangeHandler = (e) => {
             prospectFields,
             handleDelete,
             "prospect",
-            (item) => handleEdit(item, setEditProspect, resetNewProspect),
+            (item) => handleEdit(item, setEditProspect, resetNewProspect, "prospect"), // Added itemType
             editProspect
           )}
         </div>
@@ -704,7 +704,7 @@ const onChangeHandler = (e) => {
             entrepriseFields,
             handleDelete,
             "entreprise",
-            (item) => handleEdit(item, setEditEntreprise, resetNewEntreprise),
+            (item) => handleEdit(item, setEditEntreprise, resetNewEntreprise, "entreprise"), // Added itemType
             editEntreprise
           )}
         </div>
@@ -730,7 +730,7 @@ const onChangeHandler = (e) => {
             tacheFields,
             handleDelete,
             "tache",
-            (item) => handleEdit(item, setEditTache, resetNewTache),
+            (item) => handleEdit(item, setEditTache, resetNewTache, "tache"), // Added itemType
             editTache
           )}
         </div>
@@ -756,7 +756,7 @@ const onChangeHandler = (e) => {
             emailFields,
             handleDelete,
             "email",
-            (item) => handleEdit(item, setEditEmail, resetNewEmail),
+            (item) => handleEdit(item, setEditEmail, resetNewEmail, "email"), // Added itemType
             editEmail
           )}
         </div>
@@ -782,7 +782,7 @@ const onChangeHandler = (e) => {
             callFields,
             handleDelete,
             "appel",
-            (item) => handleEdit(item, setEditCall, resetNewCall),
+            (item) => handleEdit(item, setEditCall, resetNewCall, "appel"), // Added itemType
             editCall
           )}
         </div>
@@ -808,7 +808,7 @@ const onChangeHandler = (e) => {
             meetingFields,
             handleDelete,
             "meeting",
-            (item) => handleEdit(item, setEditMeeting, resetNewMeeting),
+            (item) => handleEdit(item, setEditMeeting, resetNewMeeting, "meeting"), // Added itemType
             editMeeting
           )}
         </div>
