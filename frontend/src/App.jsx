@@ -181,7 +181,8 @@ function App() {
     fetchData();
   }, [activeTab]);
 
-  const handleInputChange = (setter, isEdit = false) => (e) => {
+  //const handleInputChange = (setter, isEdit = false) => (e) => {
+  const handleInputChange = (setter) => (e) => {
     const { name, value } = e.target;
     let parsedValue = value;
     if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
@@ -189,6 +190,17 @@ function App() {
     }
     setter((prev) => ({ ...prev, [name]: parsedValue }));
   };
+
+  // Specific input change handler for edit mode
+  const handleEditInputChange = (e, editSetter, editState) => {
+    const { name, value } = e.target;
+    let parsedValue = value;
+    if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
+      parsedValue = parseInt(value, 10);
+    }
+    editSetter({ ...editState, [name]: parsedValue });
+  };
+
 
   const filterData = (data, keys) => {
     if (!filter) return data;
@@ -315,8 +327,10 @@ function App() {
 
   const renderForm = (state, setState, handleSubmit, fields, editState = null) => {
     const isEditing = !!editState;
-    const currentState = isEditing ? editState : state;
+    //const currentState = isEditing ? editState : state;
+      const editSetter = isEditing ? setState : null;
     
+      console.log("Rendering form, isEditing:", isEditing, "currentState:", currentState);    
     return (
       <form onSubmit={handleSubmit} className="mb-4">
         {fields.map((field) => {
@@ -341,8 +355,9 @@ function App() {
                 <textarea
                   id={name}
                   name={name}
-                  value={value}
-                  onChange={handleInputChange(isEditing ? setState : setState)}
+                  //value={value}
+                  //onChange={handleInputChange(isEditing ? setState : setState)}
+                  value={value || ""}                  onChange={isEditing ? (e) => handleEditInputChange(e, editSetter, editState) : handleInputChange(setState)}
                   required={required}
                   className="w-full p-2 border rounded"
                 />
@@ -350,13 +365,15 @@ function App() {
                 <select
                   id={name}
                   name={name}
-                  value={String(value)}
-                  onChange={handleInputChange(isEditing ? setState : setState)}
+                  //value={String(value)}
+                  //onChange={handleInputChange(isEditing ? setState : setState)}
+                  value={value || ""}
+                  onChange={isEditing ? (e) => handleEditInputChange(e, editSetter, editState) : handleInputChange(setState)}
                   required={required}
                   className="w-full p-2 border rounded"
                 >
                   <option value="">Sélectionnez une option</option>
-                  {options.map((option) => (
+                  {options?.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -367,10 +384,12 @@ function App() {
                   id={name}
                   type={type}
                   name={name}
-                  value={value}
-                  onChange={handleInputChange(isEditing ? setState : setState)}
+                  //value={value}
+                  //onChange={handleInputChange(isEditing ? setState : setState)}
+                  value={value || ""}
+                  onChange={isEditing ? (e) => handleEditInputChange(e, editSetter, editState) : handleInputChange(setState)}
                   placeholder={label}
-                  required={required}
+                  required={required && !isEditing}
                   className="w-full p-2 border rounded"
                 />
               )}
