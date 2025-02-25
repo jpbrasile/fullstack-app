@@ -249,9 +249,15 @@ function App() {
     }
   };
 
-  const handleEdit = (item, setEdit, resetNew) => {
+  const handleEdit = (itemFromExtendedList, setEdit, resetNew) => {
     resetNew();
-    const itemToEdit = { ...item };
+    // Find the original prospect from the 'prospects' array based on prospect_id
+    const originalProspect = prospects.find(p => p.prospect_id === itemFromExtendedList.prospect_id);
+    if (!originalProspect) {
+        console.error("Original prospect not found for editing!");
+        return; // Handle error if original prospect not found
+    }
+    const itemToEdit = { ...originalProspect }; // Copy from the *original* prospect data
     if (itemToEdit.date_objectif)
         itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
     if (itemToEdit.date_email)
@@ -261,14 +267,7 @@ function App() {
     if (itemToEdit.date_meeting)
         itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
     setEdit(itemToEdit);
-    console.log("editProspect state when editing:", itemToEdit); // <-- Add this log
-};
-  // Find enterprise name by ID
-  const getEntrepriseName = (id) => {
-    const entreprise = entreprises.find(e => e.entreprise_id === id);
-    return entreprise ? entreprise.nom_entreprise : "N/A";
   };
-
   const filteredProspects = filterData(prospects, ["nom", "prenom", "email"]);
   const filteredEntreprises = filterData(entreprises, ["nom_entreprise", "secteur_activite", "adresse"]);
 
