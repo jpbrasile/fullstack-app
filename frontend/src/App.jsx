@@ -336,13 +336,15 @@ const renderForm = (state, setState, handleSubmitFn, fields, editState = null) =
     if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
       parsedValue = parseInt(value, 10);
     }
-    
-    // When editing, update editState directly
-    // When creating, update the new item state
+
+    // When editing, update editState directly using functional setState
+    // to ensure a new object is created based on the previous state.
     if (isEditing) {
-      setState({...editState, [name]: parsedValue});
+      setState(prevState => {
+        return { ...prevState, [name]: parsedValue };
+      });
     } else {
-      setState(prev => ({...prev, [name]: parsedValue}));
+      setState(prev => ({ ...prev, [name]: parsedValue }));
     }
   };
   
