@@ -228,20 +228,19 @@ function App() {
       const method = editState ? "PUT" : "POST";
       const url = editState
         ? `${apiEndpoint}/${
-            editState.prospect_id ||
-            editState.entreprise_id ||
-            editState.tache_id ||
-            editState.email_id ||
-            editState.appel_id ||
-            editState.meeting_id ||
-            editState.id
-          }`
+                        editState.prospect_id ||
+                        editState.entreprise_id ||
+                        editState.tache_id ||
+                        editState.email_id ||
+                        editState.appel_id ||
+                        editState.meeting_id ||
+                        editState.id
+                      }`
         : apiEndpoint;
-      
-      // Use the appropriate state based on whether we're editing or creating
-      //const dataToSubmit = editState || newItemState;
-      const dataToSubmit = isEditing ? editState : newItemState;
-      
+  
+      // Use editState if it exists (for editing), otherwise use newItemState (for creating)
+      const dataToSubmit = editState || newItemState; // <---- CORRECTED LINE
+  
       await apiRequest(url, method, dataToSubmit);
       await fetchData();
       reset();
