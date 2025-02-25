@@ -181,14 +181,13 @@ function App() {
     fetchData();
   }, [activeTab]);
 
-  //const handleInputChange = (setter, isEdit = false) => (e) => {
   const handleInputChange = (setter) => (e) => {
     const { name, value } = e.target;
     let parsedValue = value;
     if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
       parsedValue = parseInt(value, 10);
     }
-    setter((prev) => ({ ...prev, [name]: parsedValue }));
+    setter(prev => ({ ...prev, [name]: parsedValue }));
   };
 
   // Specific input change handler for edit mode
@@ -325,17 +324,26 @@ function App() {
   const filteredCalls = filterData(extendedCalls, ["notes", "prospectFullName"]);
   const filteredMeetings = filterData(extendedMeetings, ["notes", "participants", "prospectFullName"]);
 
-  const renderForm = (state, setState, handleSubmit, fields, editState = null) => {
+  const renderForm = (state, setState, handleSubmit, fields, editState, setEditState) => {
     const isEditing = !!editState;
-    //const currentState = isEditing ? editState : state;
-      const editSetter = isEditing ? setState : null;
     
-      console.log("Rendering form, isEditing:", isEditing, "currentState:", currentState);    
     return (
       <form onSubmit={handleSubmit} className="mb-4">
         {fields.map((field) => {
           const { name, label, type, options, required = true, readOnly = false } = field;
-          const value = currentState[name] ?? "";
+          
+          // Select the appropriate value and change handler based on edit mode
+          const value = isEditing ? (editState[name] ?? "") : (state[name] ?? "");
+          const changeHandler = isEditing 
+            ? (e) => {
+                const { name, value } = e.target;
+                let parsedValue = value;
+                if ((name === "prospect_id" || name === "entreprise_id") && value !== "") {
+                  parsedValue = parseInt(value, 10);
+                }
+                setEditState({...editState, [name]: parsedValue});
+              }
+            : handleInputChange(setState);
           
           return (
             <div key={name} className="mb-2">
@@ -355,9 +363,8 @@ function App() {
                 <textarea
                   id={name}
                   name={name}
-                  //value={value}
-                  //onChange={handleInputChange(isEditing ? setState : setState)}
-                  value={value || ""}                  onChange={isEditing ? (e) => handleEditInputChange(e, editSetter, editState) : handleInputChange(setState)}
+                  value={value}
+                  onChange={changeHandler}
                   required={required}
                   className="w-full p-2 border rounded"
                 />
@@ -365,15 +372,13 @@ function App() {
                 <select
                   id={name}
                   name={name}
-                  //value={String(value)}
-                  //onChange={handleInputChange(isEditing ? setState : setState)}
-                  value={value || ""}
-                  onChange={isEditing ? (e) => handleEditInputChange(e, editSetter, editState) : handleInputChange(setState)}
+                  value={String(value)}
+                  onChange={changeHandler}
                   required={required}
                   className="w-full p-2 border rounded"
                 >
                   <option value="">Sélectionnez une option</option>
-                  {options?.map((option) => (
+                  {options.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
                     </option>
@@ -384,12 +389,10 @@ function App() {
                   id={name}
                   type={type}
                   name={name}
-                  //value={value}
-                  //onChange={handleInputChange(isEditing ? setState : setState)}
-                  value={value || ""}
-                  onChange={isEditing ? (e) => handleEditInputChange(e, editSetter, editState) : handleInputChange(setState)}
+                  value={value}
+                  onChange={changeHandler}
                   placeholder={label}
-                  required={required && !isEditing}
+                  required={required}
                   className="w-full p-2 border rounded"
                 />
               )}
@@ -402,7 +405,7 @@ function App() {
         {isEditing && (
           <button
             type="button"
-            onClick={() => setState(null)}
+            onClick={() => setEditState(null)}
             className="w-full mt-2 p-2 bg-gray-500 text-white rounded hover:bg-gray-600"
           >
             Annuler
