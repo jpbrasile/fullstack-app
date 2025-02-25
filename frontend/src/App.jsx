@@ -253,16 +253,16 @@ function App() {
     resetNew();
     const itemToEdit = { ...item };
     if (itemToEdit.date_objectif)
-      itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
+        itemToEdit.date_objectif = itemToEdit.date_objectif.split("T")[0];
     if (itemToEdit.date_email)
-      itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
+        itemToEdit.date_email = new Date(itemToEdit.date_email).toISOString().slice(0, 16);
     if (itemToEdit.date_appel)
-      itemToEdit.date_appel = new Date(itemToEdit.date_appel).toISOString().slice(0, 16);
+        itemToEdit.date_appel = new Date(itemToEdit.date_appel).toISOString().slice(0, 16);
     if (itemToEdit.date_meeting)
-      itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
+        itemToEdit.date_meeting = new Date(itemToEdit.date_meeting).toISOString().slice(0, 16);
     setEdit(itemToEdit);
-  };
-
+    console.log("editProspect state when editing:", itemToEdit); // <-- Add this log
+};
   // Find enterprise name by ID
   const getEntrepriseName = (id) => {
     const entreprise = entreprises.find(e => e.entreprise_id === id);
