@@ -342,7 +342,7 @@ function App() {
                   id={name}
                   name={name}
                   value={value}
-                  onChange={handleInputChange(isEditing ? setEditState : setState)}
+                  onChange={handleInputChange(isEditing ? setState : setState)}
                   required={required}
                   className="w-full p-2 border rounded"
                 />
@@ -351,7 +351,7 @@ function App() {
                   id={name}
                   name={name}
                   value={String(value)}
-                  onChange={handleInputChange(isEditing ? setEditState : setState)}
+                  onChange={handleInputChange(isEditing ? setState : setState)}
                   required={required}
                   className="w-full p-2 border rounded"
                 >
@@ -368,7 +368,7 @@ function App() {
                   type={type}
                   name={name}
                   value={value}
-                  onChange={handleInputChange(isEditing ? setEditState : setState)}
+                  onChange={handleInputChange(isEditing ? setState : setState)}
                   placeholder={label}
                   required={required}
                   className="w-full p-2 border rounded"
