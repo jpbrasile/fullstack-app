@@ -211,34 +211,41 @@ function App() {
   const handleSubmit = (apiEndpoint, newItemState, reset, setData, editState = null, setEditState = null) => async (e) => {
     e.preventDefault();
     try {
-      const method = editState ? "PUT" : "POST";
-      const url = editState
-        ? `${apiEndpoint}/${
-            editState.prospect_id ||
-            editState.entreprise_id ||
-            editState.tache_id ||
-            editState.email_id ||
-            editState.appel_id ||
-            editState.meeting_id ||
-            editState.id
-          }`
-        : apiEndpoint;
-  
-      // When editing, use the current edited state, not the original
-      const dataToSubmit = editState ? editState : newItemState;
-  
-      await apiRequest(url, method, dataToSubmit);
-      await fetchData();
-      reset();
-      if (setEditState) {
-        setEditState(null);
-      }
-    } catch (error) {
-      console.error("Error submitting data:", error);
-      alert(`Error submitting data: ${error.message}`);
-    }
-  };
+        const method = editState ? "PUT" : "POST";
+        const url = editState
+            ? `${apiEndpoint}/${
+                editState.prospect_id ||
+                editState.entreprise_id ||
+                editState.tache_id ||
+                editState.email_id ||
+                editState.appel_id ||
+                editState.meeting_id ||
+                editState.id
+            }`
+            : apiEndpoint;
 
+        // When editing, use the current edited state, not the original
+        let dataToSubmit = editState ? editState : newItemState;
+
+        // **SOLUTION: For PUT requests (edit mode), specifically for prospects,
+        // remove the 'entrepriseName' property before submitting.**
+        if (method === "PUT" && activeTab === "prospects") {
+            if (dataToSubmit.hasOwnProperty('entrepriseName')) {
+                delete dataToSubmit.entrepriseName;
+            }
+        }
+
+        await apiRequest(url, method, dataToSubmit);
+        await fetchData();
+        reset();
+        if (setEditState) {
+            setEditState(null);
+        }
+    } catch (error) {
+        console.error("Error submitting data:", error);
+        alert(`Error submitting data: ${error.message}`);
+    }
+};
   const handleDelete = (apiEndpoint, id) => async () => {
     try {
       await apiRequest(`${apiEndpoint}/${id}`, "DELETE");
