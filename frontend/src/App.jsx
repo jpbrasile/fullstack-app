@@ -150,14 +150,16 @@ function App() {
 
   const fetchData = async () => {
     try {
-      if (activeTab === "prospects") {
+      if (activeTab === "prospects" || activeTab === "taches" || 
+          activeTab === "historique_emails" || activeTab === "historique_appels" || 
+          activeTab === "historique_meetings") {
         setProspects(await apiRequest("/api/prospects"));
       }
-      if (activeTab === "entreprises") {
-        const entreprisesData = await apiRequest("/api/entreprises");
-        console.log("fetchData - /api/entreprises response:", entreprisesData);
-        setEntreprises(entreprisesData);
-      }
+      
+      // Always fetch enterprises for dropdown menus
+      const entreprisesData = await apiRequest("/api/entreprises");
+      setEntreprises(entreprisesData);
+      
       if (activeTab === "taches") {
         setTaches(await apiRequest("/api/taches"));
       }
@@ -195,51 +197,24 @@ function App() {
     );
   };
 
-  // const handleSubmit = (apiEndpoint, data, reset, setData, editState = null, setEditState = null) => async (e) => {
-  //   e.preventDefault();
-  //   try {
-  //     const method = editState ? "PUT" : "POST";
-  //     const url = editState
-  //       ? `${apiEndpoint}/${
-  //           editState.prospect_id ||
-  //           editState.entreprise_id ||
-  //           editState.tache_id ||
-  //           editState.email_id ||
-  //           editState.appel_id ||
-  //           editState.meeting_id ||
-  //           editState.id
-  //         }`
-  //       : apiEndpoint;
-
-  //     await apiRequest(url, method, data);
-  //     await fetchData();
-  //     reset();
-  //     if (setEditState) {
-  //       setEditState(null);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error submitting data:", error);
-  //     alert(`Error submitting data: ${error.message}`);
-  //   }
-  // };
   const handleSubmit = (apiEndpoint, newItemState, reset, setData, editState = null, setEditState = null) => async (e) => {
     e.preventDefault();
     try {
       const method = editState ? "PUT" : "POST";
       const url = editState
         ? `${apiEndpoint}/${
-                        editState.prospect_id ||
-                        editState.entreprise_id ||
-                        editState.tache_id ||
-                        editState.email_id ||
-                        editState.appel_id ||
-                        editState.meeting_id ||
-                        editState.id
-                      }`
+            editState.prospect_id ||
+            editState.entreprise_id ||
+            editState.tache_id ||
+            editState.email_id ||
+            editState.appel_id ||
+            editState.meeting_id ||
+            editState.id
+          }`
         : apiEndpoint;
   
-      // Use editState if it exists (for editing), otherwise use newItemState (for creating)
-      const dataToSubmit = editState || newItemState; // <---- CORRECTED LINE
+      // When editing, use the current edited state, not the original
+      const dataToSubmit = editState ? editState : newItemState;
   
       await apiRequest(url, method, dataToSubmit);
       await fetchData();
@@ -252,6 +227,7 @@ function App() {
       alert(`Error submitting data: ${error.message}`);
     }
   };
+
   const handleDelete = (apiEndpoint, id) => async () => {
     try {
       await apiRequest(`${apiEndpoint}/${id}`, "DELETE");
@@ -276,8 +252,20 @@ function App() {
     setEdit(itemToEdit);
   };
 
+  // Find enterprise name by ID
+  const getEntrepriseName = (id) => {
+    const entreprise = entreprises.find(e => e.entreprise_id === id);
+    return entreprise ? entreprise.nom_entreprise : "N/A";
+  };
+
   const filteredProspects = filterData(prospects, ["nom", "prenom", "email"]);
   const filteredEntreprises = filterData(entreprises, ["nom_entreprise", "secteur_activite", "adresse"]);
+
+  // Add enterprise name to prospects for display
+  const extendedProspects = filteredProspects.map(prospect => ({
+    ...prospect,
+    entrepriseName: getEntrepriseName(prospect.entreprise_id)
+  }));
 
   // When rendering tasks, we want to join the prospect info.
   const extendedTaches = taches.map((tache) => {
@@ -287,6 +275,7 @@ function App() {
       prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "",
     };
   });
+  
   let filteredTaches = extendedTaches;
   if (filterDate) {
     filteredTaches = filteredTaches.filter(
@@ -294,17 +283,46 @@ function App() {
     );
   }
   filteredTaches = filterData(filteredTaches, ["libelle", "status", "notes", "prospectFullName"]);
-  const filteredEmails = filterData(emailHistory, ["sujet", "expediteur", "destinataire", "corps"]);
-  const filteredCalls = filterData(callHistory, ["notes"]);
-  const filteredMeetings = filterData(meetings, ["notes", "participants"]);
+  
+  // Add prospect names to other lists
+  const extendedEmails = emailHistory.map(email => {
+    const prospect = prospects.find(p => p.prospect_id === email.prospect_id);
+    return {
+      ...email,
+      prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A"
+    };
+  });
+  
+  const extendedCalls = callHistory.map(call => {
+    const prospect = prospects.find(p => p.prospect_id === call.prospect_id);
+    return {
+      ...call,
+      prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A"
+    };
+  });
+  
+  const extendedMeetings = meetings.map(meeting => {
+    const prospect = prospects.find(p => p.prospect_id === meeting.prospect_id);
+    return {
+      ...meeting,
+      prospectFullName: prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A"
+    };
+  });
+  
+  const filteredEmails = filterData(extendedEmails, ["sujet", "expediteur", "destinataire", "corps", "prospectFullName"]);
+  const filteredCalls = filterData(extendedCalls, ["notes", "prospectFullName"]);
+  const filteredMeetings = filterData(extendedMeetings, ["notes", "participants", "prospectFullName"]);
 
   const renderForm = (state, setState, handleSubmit, fields, editState = null) => {
     const isEditing = !!editState;
+    const currentState = isEditing ? editState : state;
+    
     return (
       <form onSubmit={handleSubmit} className="mb-4">
         {fields.map((field) => {
           const { name, label, type, options, required = true, readOnly = false } = field;
-          const value = (isEditing ? editState[name] : state[name]) ?? "";
+          const value = currentState[name] ?? "";
+          
           return (
             <div key={name} className="mb-2">
               <label htmlFor={name} className="block text-sm font-medium text-gray-700">
@@ -324,7 +342,7 @@ function App() {
                   id={name}
                   name={name}
                   value={value}
-                  onChange={handleInputChange(setState, isEditing)}
+                  onChange={handleInputChange(isEditing ? setEditState : setState)}
                   required={required}
                   className="w-full p-2 border rounded"
                 />
@@ -333,7 +351,7 @@ function App() {
                   id={name}
                   name={name}
                   value={String(value)}
-                  onChange={handleInputChange(setState, isEditing)}
+                  onChange={handleInputChange(isEditing ? setEditState : setState)}
                   required={required}
                   className="w-full p-2 border rounded"
                 >
@@ -350,7 +368,7 @@ function App() {
                   type={type}
                   name={name}
                   value={value}
-                  onChange={handleInputChange(setState, isEditing)}
+                  onChange={handleInputChange(isEditing ? setEditState : setState)}
                   placeholder={label}
                   required={required}
                   className="w-full p-2 border rounded"
@@ -378,20 +396,21 @@ function App() {
   const renderList = (items, fields, handleDelete, itemType, editHandler, editState) => (
     <ul>
       {items.map((item) => {
-        // For non-prospect records (like calls, emails, taches, meetings),
-        // look up the prospect full name using the prospect_id.
-        let prospectLabel = "";
-        if (itemType !== "prospect" && item.prospect_id) {
-          const prospect = prospects.find((p) => p.prospect_id === item.prospect_id);
-          prospectLabel = prospect ? `${prospect.nom} ${prospect.prenom}` : "N/A";
-        }
         return (
-          <li key={item[`${itemType}_id`]} className="mb-2 p-2 bg-gray-100 rounded">
+          <li key={item[`${itemType}_id`] || item.id} className="mb-2 p-2 bg-gray-100 rounded">
             {fields.map((field) => {
               let displayValue = item[field.name] ?? "N/A";
-              if (field.name === "prospect_id" && itemType !== "prospect") {
-                displayValue = prospectLabel;
+              
+              // Display enterprise name instead of ID
+              if (field.name === "entreprise_id" && itemType === "prospect") {
+                displayValue = item.entrepriseName || "N/A";
               }
+              
+              // Display prospect name instead of ID
+              if (field.name === "prospect_id" && itemType !== "prospect") {
+                displayValue = item.prospectFullName || "N/A";
+              }
+              
               return (
                 <span key={field.name}>
                   {field.label}: {displayValue} <br />
@@ -450,7 +469,7 @@ function App() {
 
   // For tasks, emails, calls, and meetings, use prospect_id
   const tacheFields = [
-    { name: "tache_id", label: "ID", type: "text", required: false },
+    { name: "tache_id", label: "ID", type: "text", required: false, readOnly: true },
     { name: "libelle", label: "Libellé", type: "text" },
     {
       name: "status",
@@ -476,7 +495,7 @@ function App() {
   ];
 
   const emailFields = [
-    { name: "email_id", label: "ID", type: "text", required: false },
+    { name: "email_id", label: "ID", type: "text", required: false, readOnly: true },
     {
       name: "prospect_id",
       label: "Prospect",
@@ -494,7 +513,7 @@ function App() {
   ];
 
   const callFields = [
-    { name: "appel_id", label: "ID", type: "text", required: false },
+    { name: "appel_id", label: "ID", type: "text", required: false, readOnly: true },
     {
       name: "prospect_id",
       label: "Prospect",
@@ -509,7 +528,7 @@ function App() {
   ];
 
   const meetingFields = [
-    { name: "meeting_id", label: "ID", type: "text", required: false },
+    { name: "meeting_id", label: "ID", type: "text", required: false, readOnly: true },
     {
       name: "prospect_id",
       label: "Prospect",
@@ -603,14 +622,6 @@ function App() {
           {renderForm(
             newProspect,
             setNewProspect,
-            //handleSubmit(
-            //   "/api/prospects",
-            //   editProspect || newProspect,
-            //   resetNewProspect,
-            //   setProspects,
-            //   editProspect,
-            //   setEditProspect
-            // ),
             handleSubmit(
               "/api/prospects",
               newProspect,
@@ -623,7 +634,7 @@ function App() {
             editProspect
           )}
           {renderList(
-            filteredProspects,
+            extendedProspects,
             prospectFields,
             handleDelete,
             "prospect",
@@ -639,7 +650,7 @@ function App() {
             setNewEntreprise,
             handleSubmit(
               "/api/entreprises",
-              editEntreprise || newEntreprise,
+              newEntreprise,
               resetNewEntreprise,
               setEntreprises,
               editEntreprise,
@@ -665,7 +676,6 @@ function App() {
             setNewTache,
             handleSubmit(
               "/api/taches",
-              //editTache || newTache,
               newTache,
               resetNewTache,
               setTaches,
@@ -692,7 +702,6 @@ function App() {
             setNewEmail,
             handleSubmit(
               "/api/email_history",
-              //editEmail || newEmail,
               newEmail,
               resetNewEmail,
               setEmailHistory,
@@ -719,7 +728,6 @@ function App() {
             setNewCall,
             handleSubmit(
               "/api/call_history",
-              //editCall || newCall,
               newCall,
               resetNewCall,
               setCallHistory,
@@ -746,7 +754,6 @@ function App() {
             setNewMeeting,
             handleSubmit(
               "/api/meetings",
-              //editMeeting || newMeeting,
               newMeeting,
               resetNewMeeting,
               setMeetings,
